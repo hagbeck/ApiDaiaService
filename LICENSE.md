@@ -1,7 +1,6 @@
-/*
 The MIT License (MIT)
 
-Copyright (c) 2015, Hans-Georg Becker
+Copyright (c) 2015, Hans-Georg Becker, http://orcid.org/0000-0003-0432-294X
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -20,27 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
- */
-
-package de.tu_dortmund.ub.api.daia.ieee;
-
-import de.tu_dortmund.ub.api.daia.model.Document;
-
-import java.util.HashMap;
-import java.util.Properties;
-
-public interface IeeeResolver {
-
-    /**
-     *
-     * @param properties
-     */
-    void init(Properties properties);
-
-    /**
-     *
-     * @param latinParameters
-     * @return
-     */
-    Document items(HashMap<String, String> latinParameters);
-}
