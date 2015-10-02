@@ -384,6 +384,10 @@ public class DaiaEndpoint extends HttpServlet {
                                                                 // get items
                                                                 ArrayList<de.tu_dortmund.ub.api.daia.model.Document> linkresolverDocument = linkResolver.items("openurl", openurl);
 
+                                                                if (linkresolverDocument != null && linkresolverDocument.size() > 0) {
+                                                                    this.logger.debug(linkresolverDocument.get(0).getItem().size() + ", " + jopDocuments.get(0).getCountDigitlItems());
+                                                                }
+
                                                                 if (linkresolverDocument != null && linkresolverDocument.size() > 0 && linkresolverDocument.get(0).getItem().size() >= jopDocuments.get(0).getCountDigitlItems()) {
 
                                                                     if (daiaDocument.getItem() == null || daiaDocument.getItem().size() == 0) {
@@ -412,6 +416,10 @@ public class DaiaEndpoint extends HttpServlet {
                                                                     if (!openurl.equals("")) {
                                                                         // get items
                                                                         linkresolverDocument = linkResolver.items("openurl", openurl);
+
+                                                                        if (linkresolverDocument != null && linkresolverDocument.size() > 0) {
+                                                                            this.logger.debug(linkresolverDocument.get(0).getItem().size() + ", " + jopDocuments.get(0).getCountDigitlItems());
+                                                                        }
 
                                                                         if (linkresolverDocument != null && linkresolverDocument.size() > 0 && linkresolverDocument.get(0).getItem().size() >= jopDocuments.get(0).getCountDigitlItems()) {
 
@@ -463,6 +471,15 @@ public class DaiaEndpoint extends HttpServlet {
                                                                                     daiaDocument = null;
                                                                                 }
                                                                             }
+                                                                        }
+                                                                    }
+                                                                    else {
+
+                                                                        if (daiaDocument.getItem() == null || daiaDocument.getItem().size() == 0) {
+                                                                            daiaDocument.setItem(linkresolverDocument.get(0).getItem());
+                                                                        }
+                                                                        else {
+                                                                            daiaDocument.getItem().addAll(linkresolverDocument.get(0).getItem());
                                                                         }
                                                                     }
 
