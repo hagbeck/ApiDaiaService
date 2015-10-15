@@ -36,10 +36,6 @@ import org.eclipse.jetty.servlet.ServletHolder;
 import java.io.*;
 import java.util.Properties;
 
-/**
- * Hello world!
- *
- */
 public class DaiaService {
 
     private static String conffile  = "conf/daia.properties";
@@ -77,9 +73,9 @@ public class DaiaService {
         PropertyConfigurator.configure(config.getProperty("service.log4j-conf"));
         Logger logger = Logger.getLogger(DaiaService.class.getName());
 
-        logger.info("[" + config.getProperty("service.name") + "] " + "Starting 'DaiaService' ...");
-        logger.info("[" + config.getProperty("service.name") + "] " + "conf-file = " + conffile);
-        logger.info("[" + config.getProperty("service.name") + "] " + "log4j-conf-file = " + config.getProperty("service.log4j-conf"));
+        logger.info("Starting 'DaiaService' ...");
+        logger.info("conf-file = " + conffile);
+        logger.info("log4j-conf-file = " + config.getProperty("service.log4j-conf"));
 
         // Server
         Server server = new Server(new Integer(config.getProperty("service.port")));

@@ -64,37 +64,32 @@ import javax.xml.transform.stream.StreamSource;
 import java.io.*;
 import java.net.URLDecoder;
 import java.net.URLEncoder;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class DaiaOpenUrlEndpoint extends HttpServlet {
 
-    private String conffile  = "";
-
-    private Properties config = new Properties();
-
-    private Logger logger = Logger.getLogger(DaiaOpenUrlEndpoint.class.getName());
-
-    private boolean isTUintern = false;
-    private boolean isUBintern = false;
+    private Properties config = null;
+    private Logger logger = null;
 
     public DaiaOpenUrlEndpoint() throws IOException {
 
 		this("conf/api-test.properties");
 	}
 
-	public DaiaOpenUrlEndpoint(String propfile_api) throws IOException {
-
-        this.conffile = propfile_api;
+	public DaiaOpenUrlEndpoint(String conffile) throws IOException {
 
         // Init properties
         try {
-            InputStream inputStream = new FileInputStream(this.conffile);
+            InputStream inputStream = new FileInputStream(conffile);
 
             try {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 
                 try {
-                    config.load(reader);
+
+                    this.config = new Properties();
+                    this.config.load(reader);
 
                 } finally {
                     reader.close();
@@ -105,15 +100,16 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
             }
         }
         catch (IOException e) {
-            System.out.println("FATAL ERROR: Die Datei '" + this.conffile + "' konnte nicht geöffnet werden!");
+            System.out.println("FATAL ERROR: Die Datei '" + conffile + "' konnte nicht geöffnet werden!");
         }
 
         // init logger
         PropertyConfigurator.configure(config.getProperty("service.log4j-conf"));
+        this.logger = Logger.getLogger(DaiaOpenUrlEndpoint.class.getName());
 
-        logger.info("[" + config.getProperty("service.name") + "] " + "Starting 'DaiaService OpenURL Endpoint' ...");
-        logger.info("[" + config.getProperty("service.name") + "] " + "conf-file = " + conffile);
-        logger.info("[" + config.getProperty("service.name") + "] " + "log4j-conf-file = " + config.getProperty("service.log4j-conf"));
+        this.logger.info("Starting 'DaiaService OpenURL Endpoint' ...");
+        this.logger.info("conf-file = " + conffile);
+        this.logger.info("log4j-conf-file = " + config.getProperty("service.log4j-conf"));
 	}
 
     public void doOptions(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
@@ -129,6 +125,9 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         String ip = request.getHeader("X-Forwarded-For");
+
+        boolean isTUintern = false;
+        boolean isUBintern = false;
 
         try {
             if (ip != null) {
@@ -337,7 +336,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
 
             } else {
 
-                this.daia(request, response, format, latinParameters);
+                this.provideService(request, response, format, latinParameters, isTUintern, isUBintern);
             }
         }
     }
@@ -345,6 +344,9 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
         String ip = request.getHeader("X-Forwarded-For");
+
+        boolean isTUintern = false;
+        boolean isUBintern = false;
 
         try {
             if (ip != null) {
@@ -515,12 +517,12 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No valid {FORMAT} requested.");
             } else {
 
-                this.daia(request, response, format, latinParameters);
+                this.provideService(request, response, format, latinParameters, isTUintern, isUBintern);
             }
         }
     }
 
-    private void daia(HttpServletRequest request, HttpServletResponse response, String format, HashMap<String, String> latinParameters) throws IOException {
+    private void provideService(HttpServletRequest request, HttpServletResponse response, String format, HashMap<String, String> latinParameters, boolean isTUintern, boolean isUBintern) throws IOException {
 
         String openurl = "";
 
@@ -619,7 +621,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                             }
                             default: {
 
-                                // TODO Evaluieren: Das müssten die Faälle sein, in denen E-Books in der Knowledgebase eingetragen sind
+                                // TODO Evaluieren: Das müssten die Fälle sein, in denen E-Books in der Knowledgebase eingetragen sind
                                 if (Lookup.lookupAll(LinkResolver.class).size() > 0) {
 
                                     Document daiaDocument = null;

@@ -25,26 +25,24 @@ SOFTWARE.
 package de.tu_dortmund.ub.api.daia;
 
 import de.tu_dortmund.ub.api.daia.ils.IntegratedLibrarySystem;
+import de.tu_dortmund.ub.api.daia.jop.JournalOnlinePrintService;
+import de.tu_dortmund.ub.api.daia.linkresolver.LinkResolver;
 import de.tu_dortmund.ub.util.impl.Lookup;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 
-import javax.servlet.Servlet;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.*;
+import java.util.HashMap;
 import java.util.Properties;
 
-/**
- * Created by Hans-Georg on 24.07.2015.
- */
 public class PingEndpoint extends HttpServlet {
 
-    private String conffile  = "";
-    private Properties config = new Properties();
-    private Logger logger = Logger.getLogger(PingEndpoint.class.getName());
+    private Properties config = null;
+    private Logger logger = null;
 
     public PingEndpoint() throws IOException {
 
@@ -53,16 +51,16 @@ public class PingEndpoint extends HttpServlet {
 
     public PingEndpoint(String conffile) throws IOException {
 
-        this.conffile = conffile;
-
         // Init properties
         try {
-            InputStream inputStream = new FileInputStream(this.conffile);
+            InputStream inputStream = new FileInputStream(conffile);
 
             try {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 
                 try {
+
+                    this.config = new Properties();
                     this.config.load(reader);
 
                 } finally {
@@ -74,14 +72,15 @@ public class PingEndpoint extends HttpServlet {
             }
         }
         catch (IOException e) {
-            System.out.println("FATAL ERROR: Die Datei '" + this.conffile + "' konnte nicht geöffnet werden!");
+            System.out.println("FATAL ERROR: Die Datei '" + conffile + "' konnte nicht geöffnet werden!");
         }
 
         // init logger
         PropertyConfigurator.configure(this.config.getProperty("service.log4j-conf"));
+        this.logger = Logger.getLogger(PingEndpoint.class.getName());
 
         this.logger.info("Starting 'PingEndpoint' ...");
-        this.logger.info("conf-file = " + this.conffile);
+        this.logger.info("conf-file = " + conffile);
         this.logger.info("log4j-conf-file = " + this.config.getProperty("service.log4j-conf"));
     }
 
@@ -99,9 +98,71 @@ public class PingEndpoint extends HttpServlet {
 
         response.setHeader("Access-Control-Allow-Origin", "*");
 
-        response.setContentType("text/plain;charset=UTF-8");
-        response.setStatus(HttpServletResponse.SC_OK);
-        response.getWriter().println("pong");
+        try {
+
+            HashMap<String,String> health = null;
+
+            // ILS
+            if (Lookup.lookupAll(IntegratedLibrarySystem.class).size() > 0) {
+
+                IntegratedLibrarySystem integratedLibrarySystem = Lookup.lookup(IntegratedLibrarySystem.class);
+                // init ILS
+                integratedLibrarySystem.init(this.config);
+
+                health = integratedLibrarySystem.health(this.config);
+            }
+            // JOP
+            if (Lookup.lookupAll(JournalOnlinePrintService.class).size() > 0) {
+
+                JournalOnlinePrintService journalOnlinePrintService = Lookup.lookup(JournalOnlinePrintService.class);
+                // init JOP
+                journalOnlinePrintService.init(this.config);
+
+                if (health == null) {
+
+                    health = journalOnlinePrintService.health(this.config);
+                }
+                else {
+
+                    health.putAll(journalOnlinePrintService.health(this.config));
+                }
+            }
+            // Linkresolver
+            if (Lookup.lookupAll(LinkResolver.class).size() > 0) {
+
+                LinkResolver linkResolver = Lookup.lookup(LinkResolver.class);
+                // init Linkresolver
+                linkResolver.init(this.config);
+
+                if (health == null) {
+
+                    health = linkResolver.health(this.config);
+                }
+                else {
+
+                    health.putAll(linkResolver.health(this.config));
+                }
+            }
+
+            if (health.containsValue("failed")) {
+
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().println("One or more dependencies unavailable!");
+            }
+            else {
+
+                response.setStatus(HttpServletResponse.SC_OK);
+                response.setContentType("text/plain;charset=UTF-8");
+                response.getWriter().println("pong");
+            }
+        }
+        catch (Exception e) {
+
+            response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+            response.setContentType("text/plain;charset=UTF-8");
+            response.getWriter().println("Could not check system health!");
+        }
     }
 
 }

@@ -56,13 +56,13 @@ import javax.xml.datatype.DatatypeConfigurationException;
 import javax.xml.datatype.DatatypeFactory;
 import javax.xml.transform.stream.StreamSource;
 import java.io.*;
+import java.time.LocalDateTime;
 import java.util.*;
 
 public class DaiaEndpoint extends HttpServlet {
 
-    private String conffile  = "";
-    private Properties config = new Properties();
-    private Logger logger = Logger.getLogger(DaiaEndpoint.class.getName());
+    private Properties config = null;
+    private Logger logger = null;
 
 	public DaiaEndpoint() throws IOException {
 
@@ -70,17 +70,17 @@ public class DaiaEndpoint extends HttpServlet {
 	}
 
 	public DaiaEndpoint(String conffile) throws IOException {
-
-        this.conffile = conffile;
-
+        
         // Init properties
         try {
-            InputStream inputStream = new FileInputStream(this.conffile);
+            InputStream inputStream = new FileInputStream(conffile);
 
             try {
                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
 
                 try {
+
+                    this.config = new Properties();
                     this.config.load(reader);
 
                 } finally {
@@ -92,14 +92,15 @@ public class DaiaEndpoint extends HttpServlet {
             }
         }
         catch (IOException e) {
-            System.out.println("FATAL ERROR: Die Datei '" + this.conffile + "' konnte nicht geöffnet werden!");
+            System.out.println("FATAL ERROR: Die Datei '" + conffile + "' konnte nicht geöffnet werden!");
         }
 
         // init logger
         PropertyConfigurator.configure(this.config.getProperty("service.log4j-conf"));
+        this.logger = Logger.getLogger(DaiaEndpoint.class.getName());
 
         this.logger.info("Starting 'DaiaEndpoint' ...");
-        this.logger.info("conf-file = " + this.conffile);
+        this.logger.info("conf-file = " + conffile);
         this.logger.info("log4j-conf-file = " + this.config.getProperty("service.log4j-conf"));
     }
 
@@ -355,19 +356,42 @@ public class DaiaEndpoint extends HttpServlet {
                                                                 String openurl = "";
 
                                                                 if (document.getMediatype() != null && document.getMediatype().equals("g")) {
-                                                                    openurl += "&rft.genre=journal&&rft.issn=" + issn;
+
+                                                                    this.logger.debug("document.getMediatype().equals(\"g\")");
+
+                                                                    openurl += "&rft.genre=journal&rft.eissn=" + issn;
+
+                                                                    if (document.getIssnprint() != null) {
+                                                                        if (document.getIssnprint().startsWith("ISSN ")) {
+                                                                            openurl += "&rft.issn=" + document.getIssnprint().replaceAll("ISSN ","");
+                                                                        }
+                                                                        else {
+
+                                                                            openurl += "&rft.issn=" + document.getIssnprint();
+                                                                        }
+                                                                    }
                                                                 }
                                                                 else {
 
                                                                     if (document.getIssnprint() != null) {
                                                                         if (document.getIssnprint().startsWith("ISSN ")) {
-                                                                            openurl += "&rft.genre=journal&&rft.issn=" + document.getIssnprint().replaceAll("ISSN ","");
+                                                                            openurl += "&rft.genre=journal&rft.issn=" + document.getIssnprint().replaceAll("ISSN ","");
                                                                         }
+                                                                        else {
+
+                                                                            openurl += "&rft.genre=journal&rft.issn=" + document.getIssnprint();
+                                                                        }
+
+                                                                        openurl += "&rft.eissn=" + document.getIssn();
                                                                     }
                                                                     else if (document.getIssnwww() != null) {
                                                                         if (document.getIssnwww().startsWith("ISSN ")) {
-                                                                            openurl += "&rft.genre=journal&&rft.issn=" + document.getIssnwww().replaceAll("ISSN ","");
+                                                                            openurl += "&rft.genre=journal&rft.eissn=" + document.getIssnwww().replaceAll("ISSN ","");
                                                                         }
+                                                                        else {
+                                                                            openurl += "&rft.genre=journal&rft.eissn=" + document.getIssnwww();
+                                                                        }
+                                                                        openurl += "&rft.issn=" + document.getIssn();
                                                                     }
                                                                     else {
                                                                         openurl += "&rft.genre=journal&&rft.issn=" + document.getIssn();
@@ -475,18 +499,29 @@ public class DaiaEndpoint extends HttpServlet {
                                                                     }
                                                                     else {
 
+                                                                        daiaDocument = null;
+
+                                                                        /* TODO tue nix?
                                                                         if (daiaDocument.getItem() == null || daiaDocument.getItem().size() == 0) {
+
+                                                                            if (daiaDocument.getItem() == null) {
+                                                                                daiaDocument.setItem(new ArrayList<Item>());
+                                                                            }
                                                                             daiaDocument.setItem(linkresolverDocument.get(0).getItem());
                                                                         }
                                                                         else {
                                                                             daiaDocument.getItem().addAll(linkresolverDocument.get(0).getItem());
                                                                         }
+                                                                        */
                                                                     }
 
                                                                 }
                                                             }
 
-                                                            daiaDocuments.add(daiaDocument);
+                                                            if (daiaDocument != null) {
+
+                                                                daiaDocuments.add(daiaDocument);
+                                                            }
                                                         }
                                                     }
                                                     else if (document.getZdbid() != null) {
@@ -842,7 +877,13 @@ public class DaiaEndpoint extends HttpServlet {
             Mailer mailer = new Mailer(this.config.getProperty("service.mailer.conf"));
 
             try {
-                mailer.postMail("[DAIA] Exception: " + HttpServletResponse.SC_SERVICE_UNAVAILABLE + " Service unavailable.", e.getMessage() + "\n" + request.getRequestURL());
+
+                String referer = "'none'";
+                if (request.getHeader("referer") != null) {
+
+                    referer = request.getHeader("referer");
+                }
+                mailer.postMail("[DAIA] Exception: " + HttpServletResponse.SC_SERVICE_UNAVAILABLE + " Service unavailable.", e.getMessage() + "\n" + request.getRequestURL() + "\n" + ip + "\n" + referer + "\n" + "\n" + e.getCause().toString());
 
             } catch (MessagingException e1) {
 

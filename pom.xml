@@ -18,7 +18,7 @@
         <!-- Versionen  der Abhängigkeiten -->
         <dependency.version.junit>4.12</dependency.version.junit>
         <dependency.version.maven.shade>2.4.1</dependency.version.maven.shade>
-        <dependency.version.jetty>9.3.1.v20150714</dependency.version.jetty>
+        <dependency.version.jetty>9.3.5.v20151012</dependency.version.jetty>
         <dependency.version.log4j>1.2.17</dependency.version.log4j>
         <dependency.version.jaxen>1.1.6</dependency.version.jaxen>
         <dependency.version.javax.mail>1.5.4</dependency.version.javax.mail>
