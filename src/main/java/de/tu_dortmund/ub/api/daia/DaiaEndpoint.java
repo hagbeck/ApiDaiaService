@@ -526,6 +526,8 @@ public class DaiaEndpoint extends HttpServlet {
                                                     }
                                                     else if (document.getZdbid() != null) {
 
+                                                        this.logger.info("Bin drin!");
+
                                                         JournalOnlinePrintService journalOnlinePrintService = Lookup.lookup(JournalOnlinePrintService.class);
                                                         // init JOP
                                                         journalOnlinePrintService.init(this.config);
@@ -533,37 +535,37 @@ public class DaiaEndpoint extends HttpServlet {
                                                         // get items
                                                         ArrayList<de.tu_dortmund.ub.api.daia.jop.model.Document> jopDocuments = journalOnlinePrintService.items("zdbid", document.getZdbid());
 
+                                                        if (jopDocuments != null) {
+
+                                                            this.logger.info("jopDocuments.size()=" + jopDocuments.size());
+                                                        }
+
                                                         if (jopDocuments != null && jopDocuments.size() > 0) {
 
                                                             de.tu_dortmund.ub.api.daia.model.Document daiaDocument = new de.tu_dortmund.ub.api.daia.model.Document();
 
-                                                            if (idtype.equals("verbundid")) {
-
-                                                                daiaDocument.setId(this.config.getProperty("daia.document.baseurl") + localpart);
-                                                                daiaDocument.setHref(this.config.getProperty("daia.document.baseurl") + localpart);
+                                                            if (jopDocuments.get(0).getId() != null) {
+                                                                daiaDocument.setId(jopDocuments.get(0).getId());
                                                             }
                                                             else {
-
-                                                                if (jopDocuments.get(0).getId() != null) {
-                                                                    daiaDocument.setId(jopDocuments.get(0).getId());
-                                                                }
-                                                                else {
-                                                                    daiaDocument.setId(this.config.getProperty("daia.document.baseurl") + document.getZdbid());
-                                                                }
-
-                                                                if (jopDocuments.get(0).getHref() != null) {
-                                                                    daiaDocument.setHref(jopDocuments.get(0).getHref());
-                                                                }
-                                                                else {
-                                                                    daiaDocument.setHref(this.config.getProperty("daia.document.baseurl") + document.getZdbid());
-                                                                }
+                                                                daiaDocument.setId(this.config.getProperty("daia.document.baseurl") + document.getZdbid());
                                                             }
+
+                                                            if (jopDocuments.get(0).getHref() != null) {
+                                                                daiaDocument.setHref(jopDocuments.get(0).getHref());
+                                                            }
+                                                            else {
+                                                                daiaDocument.setHref(this.config.getProperty("daia.document.baseurl") + document.getZdbid());
+                                                            }
+
                                                             // print
                                                             if (jopDocuments.get(0).getItem() != null && jopDocuments.get(0).getItem().size() > 0) {
                                                                 daiaDocument.setItem(jopDocuments.get(0).getItem());
                                                             }
 
                                                             // digital - nicht möglich, da ISSN fehlt
+                                                            this.logger.info("jopDocuments.get(0).isExistsDigitalItems()=" + jopDocuments.get(0).isExistsDigitalItems());
+
                                                             if (jopDocuments.get(0).isExistsDigitalItems()) {
 
                                                                 jopDocuments = journalOnlinePrintService.eonly("zdbid", document.getZdbid());
