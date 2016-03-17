@@ -124,18 +124,19 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        String ip = request.getHeader("X-Forwarded-For");
+        String ips = request.getHeader("X-Forwarded-For");
 
         boolean isTUintern = false;
         boolean isUBintern = false;
+        boolean is52bIBA = false;
 
         try {
-            if (ip != null) {
+            if (ips != null) {
 
                 String[] ranges = config.getProperty("service.iprange.tu").split("\\|");
                 for (String range : ranges) {
 
-                    if (ip.matches(range)) {
+                    if (ips.matches(range)) {
 
                         isTUintern = true;
                         break;
@@ -147,7 +148,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
 
                     for (String exception : exceptions) {
 
-                        if (ip.matches(exception)) {
+                        if (ips.matches(exception)) {
 
                             isTUintern = false;
                             break;
@@ -158,7 +159,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                 ranges = config.getProperty("service.iprange.ub").split("\\|");
                 for (String range : ranges) {
 
-                    if (ip.matches(range)) {
+                    if (ips.matches(range)) {
 
                         isUBintern = true;
                         break;
@@ -169,20 +170,59 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
 
                     for (String exception : exceptions) {
 
-                        if (ip.matches(exception)) {
+                        if (ips.matches(exception)) {
 
                             isUBintern = false;
                             break;
                         }
                     }
                 }
+
+                ranges = config.getProperty("service.iprange.ub.52bIBAs").split("\\|");
+                exceptions = config.getProperty("service.iprange.ub.52bIBAs.exceptions").split("\\|");
+                String tmp[] = ips.split(", ");
+
+                for (int i = 1; i < 3; i++) {
+
+                    try {
+                        String ip = tmp[tmp.length - i];
+
+                        for (String range : ranges) {
+
+                            if (ip.matches(range)) {
+
+                                is52bIBA = true;
+                                break;
+                            }
+                        }
+
+                        if (exceptions.length > 0) {
+
+                            if (is52bIBA) {
+
+                                for (String exception : exceptions) {
+
+                                    if (ip.matches(exception)) {
+
+                                        is52bIBA = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e) {
+
+                    }
+                }
+
             }
         }
         catch (Exception e) {
 
             this.logger.error(e.getMessage(), e.getCause());
         }
-        this.logger.info("Where is it from? " + request.getHeader("X-Forwarded-For") + ", " + isTUintern + ", " + isUBintern);
+        this.logger.info("[" + this.config.getProperty("service.name") + "] " + "Where is it from? " + request.getHeader("X-Forwarded-For") + ", " + isTUintern + ", " + isUBintern + ", " + is52bIBA);
 
         // format
         String format = "html";
@@ -225,6 +265,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                     parameters.put("lang", "de");
                     parameters.put("isTUintern", Boolean.toString(isTUintern));
                     parameters.put("isUBintern", Boolean.toString(isUBintern));
+                    parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                     String html = htmlOutputter(doc, this.config.getProperty("linkresolver.html.xslt"), parameters);
 
@@ -317,6 +358,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                         parameters.put("lang", "de");
                         parameters.put("isTUintern", Boolean.toString(isTUintern));
                         parameters.put("isUBintern", Boolean.toString(isUBintern));
+                        parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                         String html = htmlOutputter(doc, this.config.getProperty("linkresolver.html.xslt"), parameters);
 
@@ -336,7 +378,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
 
             } else {
 
-                this.provideService(request, response, format, latinParameters, isTUintern, isUBintern);
+                this.provideService(request, response, format, latinParameters, isTUintern, isUBintern, is52bIBA);
             }
         }
     }
@@ -347,6 +389,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
 
         boolean isTUintern = false;
         boolean isUBintern = false;
+        boolean is52bIBA = false;
 
         try {
             if (ip != null) {
@@ -393,6 +436,16 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                             isUBintern = false;
                             break;
                         }
+                    }
+                }
+
+                ranges = config.getProperty("service.iprange.ub.52bIBAs").split("\\|");
+                for (String range : ranges) {
+
+                    if (ip.matches(range)) {
+
+                        is52bIBA = true;
+                        break;
                     }
                 }
             }
@@ -462,6 +515,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                     parameters.put("lang", "de");
                     parameters.put("isTUintern", Boolean.toString(isTUintern));
                     parameters.put("isUBintern", Boolean.toString(isUBintern));
+                    parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                     String html = htmlOutputter(doc, this.config.getProperty("linkresolver.html.xslt"), parameters);
 
@@ -517,12 +571,12 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                 response.sendError(HttpServletResponse.SC_BAD_REQUEST, "No valid {FORMAT} requested.");
             } else {
 
-                this.provideService(request, response, format, latinParameters, isTUintern, isUBintern);
+                this.provideService(request, response, format, latinParameters, isTUintern, isUBintern, is52bIBA);
             }
         }
     }
 
-    private void provideService(HttpServletRequest request, HttpServletResponse response, String format, HashMap<String, String> latinParameters, boolean isTUintern, boolean isUBintern) throws IOException {
+    private void provideService(HttpServletRequest request, HttpServletResponse response, String format, HashMap<String, String> latinParameters, boolean isTUintern, boolean isUBintern, boolean is52bIBA) throws IOException {
 
         String openurl = "";
 
@@ -1100,6 +1154,7 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                             parameters.put("lang", "de");
                             parameters.put("isTUintern", Boolean.toString(isTUintern));
                             parameters.put("isUBintern", Boolean.toString(isUBintern));
+                            parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                             parameters.put("id", "openurl:" + URLDecoder.decode(openurl,"UTF-8"));
 
@@ -1150,8 +1205,9 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                             parameters.put("lang", "de");
                             parameters.put("isTUintern", Boolean.toString(isTUintern));
                             parameters.put("isUBintern", Boolean.toString(isUBintern));
+                            parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
-                            parameters.put("id", "openurl:" + this.cleanup(URLDecoder.decode(openurl, "UTF-8")));
+                            parameters.put("id", "openurl:" + URLDecoder.decode(openurl,"UTF-8"));
 
                             ObjectMapper mapper = new ObjectMapper();
                             StringWriter json = new StringWriter();
@@ -1263,14 +1319,9 @@ public class DaiaOpenUrlEndpoint extends HttpServlet {
                         parameters.put("lang", "de");
                         parameters.put("isTUintern", Boolean.toString(isTUintern));
                         parameters.put("isUBintern", Boolean.toString(isUBintern));
+                        parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
-                        if (openurl.contains("__char_set=latin1")) {
-                            parameters.put("id", "openurl:" + request.getQueryString()); // TODO TESTEN für andere Fälle!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                            this.logger.debug("OpenUrl für 404-HTML: " + openurl);
-                        }
-                        else {
-                            parameters.put("id", "openurl:" + URLDecoder.decode(openurl,"UTF-8"));
-                        }
+                        parameters.put("id", "openurl:" + URLDecoder.decode(openurl,"UTF-8"));
 
                         String html = htmlOutputter(doc, this.config.getProperty("linkresolver.html.xslt"), parameters);
 

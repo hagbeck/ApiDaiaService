@@ -116,18 +116,19 @@ public class DaiaEndpoint extends HttpServlet {
 
     protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 
-        String ip = request.getHeader("X-Forwarded-For");
+        String ips = request.getHeader("X-Forwarded-For");
 
         boolean isTUintern = false;
         boolean isUBintern = false;
+        boolean is52bIBA = false;
 
         try {
-            if (ip != null) {
+            if (ips != null) {
 
                 String[] ranges = config.getProperty("service.iprange.tu").split("\\|");
                 for (String range : ranges) {
 
-                    if (ip.matches(range)) {
+                    if (ips.matches(range)) {
 
                         isTUintern = true;
                         break;
@@ -139,7 +140,7 @@ public class DaiaEndpoint extends HttpServlet {
 
                     for (String exception : exceptions) {
 
-                        if (ip.matches(exception)) {
+                        if (ips.matches(exception)) {
 
                             isTUintern = false;
                             break;
@@ -150,7 +151,7 @@ public class DaiaEndpoint extends HttpServlet {
                 ranges = config.getProperty("service.iprange.ub").split("\\|");
                 for (String range : ranges) {
 
-                    if (ip.matches(range)) {
+                    if (ips.matches(range)) {
 
                         isUBintern = true;
                         break;
@@ -161,11 +162,49 @@ public class DaiaEndpoint extends HttpServlet {
 
                     for (String exception : exceptions) {
 
-                        if (ip.matches(exception)) {
+                        if (ips.matches(exception)) {
 
                             isUBintern = false;
                             break;
                         }
+                    }
+                }
+
+                ranges = config.getProperty("service.iprange.ub.52bIBAs").split("\\|");
+                exceptions = config.getProperty("service.iprange.ub.52bIBAs.exceptions").split("\\|");
+                String tmp[] = ips.split(", ");
+
+                for (int i = 1; i < 3; i++) {
+
+                    try {
+                        String ip = tmp[tmp.length - i];
+
+                        for (String range : ranges) {
+
+                            if (ip.matches(range)) {
+
+                                is52bIBA = true;
+                                break;
+                            }
+                        }
+
+                        if (exceptions.length > 0) {
+
+                            if (is52bIBA) {
+
+                                for (String exception : exceptions) {
+
+                                    if (ip.matches(exception)) {
+
+                                        is52bIBA = false;
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    catch (Exception e) {
+
                     }
                 }
             }
@@ -174,7 +213,7 @@ public class DaiaEndpoint extends HttpServlet {
 
             this.logger.error(e.getMessage(), e.getCause());
         }
-        this.logger.info("Where is it from? " + request.getHeader("X-Forwarded-For") + ", " + isTUintern + ", " + isUBintern);
+        this.logger.info("[" + this.config.getProperty("service.name") + "] " + "Where is it from? " + request.getHeader("X-Forwarded-For") + ", " + isTUintern + ", " + isUBintern + ", " + is52bIBA);
 
         response.setHeader("Access-Control-Allow-Origin", config.getProperty("Access-Control-Allow-Origin"));
 
@@ -285,11 +324,11 @@ public class DaiaEndpoint extends HttpServlet {
                                                 if (Lookup.lookupAll(JournalOnlinePrintService.class).size() > 0) {
 
                                                     String issn = null;
-                                                    if (document.getIssn() != null) {
-                                                        issn = document.getIssn();
-                                                    }
-                                                    else if (document.getIssnprint() != null) {
+                                                    if (document.getIssnprint() != null) {
                                                         issn = document.getIssnprint().replaceAll("ISSN ","");
+                                                    }
+                                                    else if (document.getIssn() != null) {
+                                                        issn = document.getIssn();
                                                     }
                                                     else if (document.getIssnwww() != null) {
                                                         issn = document.getIssnwww().replaceAll("ISSN ","");
@@ -571,6 +610,7 @@ public class DaiaEndpoint extends HttpServlet {
                                                                 jopDocuments = journalOnlinePrintService.eonly("zdbid", document.getZdbid());
 
                                                                 if (jopDocuments != null && jopDocuments.size() > 0) {
+
                                                                     if (daiaDocument.getItem() == null || daiaDocument.getItem().size() == 0) {
                                                                         daiaDocument.setItem(jopDocuments.get(0).getItem());
                                                                     }
@@ -681,6 +721,7 @@ public class DaiaEndpoint extends HttpServlet {
                                                 parameters.put("lang", "de");
                                                 parameters.put("isTUintern", Boolean.toString(isTUintern));
                                                 parameters.put("isUBintern", Boolean.toString(isUBintern));
+                                                parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                                                 this.logger.debug("idtype = " + idtype);
                                                 parameters.put("id", idtype + ":" + localpart);
@@ -790,6 +831,7 @@ public class DaiaEndpoint extends HttpServlet {
                                                 parameters.put("lang", "de");
                                                 parameters.put("isTUintern", Boolean.toString(isTUintern));
                                                 parameters.put("isUBintern", Boolean.toString(isUBintern));
+                                                parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                                                 parameters.put("id", idtype + ":" + localpart);
 
@@ -831,6 +873,7 @@ public class DaiaEndpoint extends HttpServlet {
                                             parameters.put("lang", "de");
                                             parameters.put("isTUintern", Boolean.toString(isTUintern));
                                             parameters.put("isUBintern", Boolean.toString(isUBintern));
+                                            parameters.put("is52bIBA", Boolean.toString(is52bIBA));
 
                                             parameters.put("id", idtype + ":" + localpart);
 
@@ -870,6 +913,8 @@ public class DaiaEndpoint extends HttpServlet {
         }
         catch (Exception e) {
 
+            e.printStackTrace();
+
             this.logger.error(new Date() + "[DAIA] Exception: " + HttpServletResponse.SC_SERVICE_UNAVAILABLE + " Service unavailable.");
             this.logger.error(e.getMessage(), e.getCause());
             for (StackTraceElement stackTraceElement : e.getStackTrace()) {
@@ -885,7 +930,7 @@ public class DaiaEndpoint extends HttpServlet {
 
                     referer = request.getHeader("referer");
                 }
-                mailer.postMail("[DAIA] Exception: " + HttpServletResponse.SC_SERVICE_UNAVAILABLE + " Service unavailable.", e.getMessage() + "\n" + request.getRequestURL() + "\n" + ip + "\n" + referer + "\n" + "\n" + e.getCause().toString());
+                mailer.postMail("[DAIA] Exception: " + HttpServletResponse.SC_SERVICE_UNAVAILABLE + " Service unavailable.", e.getMessage() + "\n" + request.getRequestURL() + "\n" + ips + "\n" + referer + "\n" + "\n" + e.getCause().toString());
 
             } catch (MessagingException e1) {
 
