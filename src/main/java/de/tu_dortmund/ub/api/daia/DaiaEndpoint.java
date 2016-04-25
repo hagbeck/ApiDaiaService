@@ -351,8 +351,10 @@ public class DaiaEndpoint extends HttpServlet {
 
                                                             if (idtype.equals("verbundid")) {
 
-                                                                daiaDocument.setId(this.config.getProperty("daia.document.baseurl") + localpart);
-                                                                daiaDocument.setHref(this.config.getProperty("daia.document.baseurl") + localpart);
+                                                                //daiaDocument.setId(this.config.getProperty("daia.document.baseurl") + localpart);
+                                                                //daiaDocument.setHref(this.config.getProperty("daia.document.baseurl") + localpart);
+                                                                daiaDocument.setId(document.getId());
+                                                                daiaDocument.setHref(document.getHref());
                                                             }
                                                             else if (idtype.equals("issn")) {
 
@@ -538,9 +540,9 @@ public class DaiaEndpoint extends HttpServlet {
                                                                     }
                                                                     else {
 
-                                                                        daiaDocument = null;
+                                                                        //daiaDocument = null;
 
-                                                                        /* TODO tue nix?
+                                                                        /* TODO tue nix? */
                                                                         if (daiaDocument.getItem() == null || daiaDocument.getItem().size() == 0) {
 
                                                                             if (daiaDocument.getItem() == null) {
@@ -551,7 +553,7 @@ public class DaiaEndpoint extends HttpServlet {
                                                                         else {
                                                                             daiaDocument.getItem().addAll(linkresolverDocument.get(0).getItem());
                                                                         }
-                                                                        */
+
                                                                     }
 
                                                                 }
